@@ -1,4 +1,13 @@
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/GSS1948/geohazard-watchtower-workbench/blob/main/Global_Workbench_for_Macro_Disaster_Studies_Prediction_and_Amelioration.ipynb)
+
+# 🛰️ Geohazard Watchtower Workbench
+
+A 72-hour operational early warning and relocation triage workbench applying Eliyahu M. Goldratt’s **Theory of Constraints (TOC)** to multi-physics satellite telemetry.
+
+## Quick Launch Options
+1. **Interactive Notebook:** Click the **Open in Colab** badge above to run the predictive pipeline in your browser.
+2. **War Room Dashboard:** Run `streamlit run app.py` locally or deploy it to Streamlit Community Cloud to launch the interactive 3D telemetry war room.
+
 # geohazard-watchtower-workbench
 34-Node Planetary Macro-Disaster Prediction &amp; Automated 72-Hour Safe-Haven Dispatch Engine
 # Global Watchtower Workbench: 34-Node Macro-Disaster Prediction & Safe-Haven Engine
