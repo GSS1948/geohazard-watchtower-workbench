@@ -1,3 +1,4 @@
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/GSS1948/geohazard-watchtower-workbench/blob/main/Global_Workbench_for_Macro_Disaster_Studies_Prediction_and_Amelioration.ipynb)
 # geohazard-watchtower-workbench
 34-Node Planetary Macro-Disaster Prediction &amp; Automated 72-Hour Safe-Haven Dispatch Engine
 # Global Watchtower Workbench: 34-Node Macro-Disaster Prediction & Safe-Haven Engine
