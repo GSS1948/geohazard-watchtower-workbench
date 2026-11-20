@@ -255,12 +255,13 @@ def evaluate_all_corridors(df_zones, live_mode=True, now_utc=None):
                     "Status": alert_tier,
                     "Node": node_id,
                     "Corridor": name,
-                    "Now σ": round(current_sigma, 2),
-                    "72h Peak σ": round(peak_sigma, 2),
+                    "Now σ": round(current_sigma, 1),
+                    "72h Peak σ": round(peak_sigma, 1),
                     "Saturation %": round(saturation_pct, 1),
                     "τ₁ Limit %": round(tau_1, 1),
                     "Headroom %": round(headroom_pct, 1),
-                    "Quakes (72h)": quake_count if live_mode else "-",
+                    "Rain 72h (mm)": round(total_rain_72h, 1),
+                    "Max Gust (km/h)": round(max_gust_kmh, 1),
                     "_score": severity_score,
                 }
             )
