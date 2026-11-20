@@ -27,40 +27,51 @@ mock_stream = np.cumsum(np.random.normal(0.05, 0.2, 10)) + 10.0
 current_sigma, mse_curve, is_breach = compute_toc_bottleneck_sigma(mock_stream, threshold_sigma)
 
 # Display Map using PyDeck centered on zone coordinates
-lat, lon = zone_data['latitude'], zone_data['longitude']
-view_state = pdk.ViewState(latitude=lat, longitude=lon, zoom=8, pitch=30)
+lat, lon = float(zone_data['latitude']), float(zone_data['longitude'])
+view_state = pdk.ViewState(latitude=lat, longitude=lon, zoom=7, pitch=30)
+
+marker_color = [255, 50, 50, 200] if is_breach else [0, 220, 100, 200]
 
 map_df = pd.DataFrame({
     'lat': [lat],
     'lon': [lon],
-    'status': ['Active Breach' if is_breach else 'Stable'],
-    'color': [[255, 0, 0, 200] if is_breach else [0, 255, 0, 200]]
+    'zone': [selected_zone],
+    'status': ['Active Breach' if is_breach else 'Stable']
 })
 
 map_layer = pdk.Layer(
     "ScatterplotLayer",
     data=map_df,
     get_position='[lon, lat]',
-    get_color='color',
-    get_radius=15000,
+    get_fill_color=marker_color,
+    get_radius=20000,
     pickable=True,
 )
 
-r = pdk.Deck(layers=[map_layer], initial_view_state=view_state, map_style="mapbox://styles/mapbox/dark-v10")
+r = pdk.Deck(
+    layers=[map_layer],
+    initial_view_state=view_state,
+    map_style="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
+    tooltip={"text": "{zone}\nStatus: {status}"}
+)
 st.pydeck_chart(r)
 
 # Metrics & Chart
-st.subheader("Neural Reconstruction MSE")
-chart_data = pd.DataFrame({"MSE": mse_curve}, index=range(1, len(mse_curve) + 1))
-st.line_chart(chart_data)
+col1, col2 = st.columns([2, 1])
 
-st.metric(
-    label="Current Peak Anomaly Gate", 
-    value=f"{current_sigma:.2f}\u03c3", 
-    delta="Active Breach" if is_breach else "Nominal"
-)
+with col1:
+    st.subheader("Neural Reconstruction MSE")
+    chart_data = pd.DataFrame({"MSE": mse_curve}, index=range(1, len(mse_curve) + 1))
+    st.line_chart(chart_data)
 
-if is_breach:
-    st.error(f"⚠️ **CRITICAL TOC BOTTLENECK BREACH DETECTED** at {selected_zone}! 72-hour cascading hazard vector active.")
-else:
-    st.success(f"✅ Corridor stable under current σ threshold ({threshold_sigma}).")
+with col2:
+    st.subheader("Triage Telemetry")
+    st.metric(
+        label="Current Peak Anomaly Gate", 
+        value=f"{current_sigma:.2f}σ", 
+        delta="Active Breach" if is_breach else "Nominal"
+    )
+    if is_breach:
+        st.error(f"⚠️ **CRITICAL TOC BOTTLENECK BREACH DETECTED** at {selected_zone}! 72-hour cascading hazard vector active.")
+    else:
+        st.success(f"✅ Corridor stable under current σ threshold ({threshold_sigma}).")
