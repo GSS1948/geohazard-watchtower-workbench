@@ -1,11 +1,24 @@
+import os
+import glob
 import numpy as np
 import pandas as pd
 
 def load_territory_matrix(csv_path="Matrix.csv"):
-    """Loads the complete 34-corridor spatial node matrix from Matrix.csv."""
-    df = pd.read_csv(csv_path)
-    df['territory_name'] = df['territory_name'].astype(str).str.strip()
-    return df
+    """Loads the 34-corridor spatial matrix regardless of filename case or subfolder."""
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    candidates = [
+        os.path.join(base_dir, csv_path),
+        os.path.join(base_dir, "matrix.csv"),
+        os.path.join(base_dir, "Matrix.csv"),
+    ] + glob.glob(os.path.join(base_dir, "**", "*[Mm]atrix*.csv"), recursive=True)
+
+    for path in candidates:
+        if os.path.exists(path):
+            df = pd.read_csv(path)
+            df['territory_name'] = df['territory_name'].astype(str).str.strip()
+            return df
+
+    raise FileNotFoundError(f"Could not locate Matrix.csv in {base_dir}. Found files: {os.listdir(base_dir)}")
 
 def haversine_km(lat1, lon1, lat2, lon2):
     """Computes great-circle distance in kilometers between two coordinates."""
