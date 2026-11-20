@@ -36,7 +36,7 @@ def haversine_km(lat1, lon1, lat2, lon2):
 def compute_toc_bottleneck_telemetry(zone_row, now_utc=None):
     """
     Computes unified 72-hour sigma trajectory, physical TOC bottleneck saturation (tau_1 / tau_2),
-    trajectory phase (RISING vs POST-PEAK), and exact wall-clock deadline before tau_2 failure.
+    trajectory phase, and exact wall-clock deadline before tau_2 failure.
     """
     if now_utc is None:
         now_utc = datetime.now(timezone.utc)
@@ -60,17 +60,14 @@ def compute_toc_bottleneck_telemetry(zone_row, now_utc=None):
     peak_sigma = float(sigma_series[peak_idx])
     peak_time_utc = timestamps[peak_idx]
 
-    # Determine phase: are we still climbing or past peak?
     if peak_idx >= 11:
         phase = "RISING / CRESTING NOW"
     else:
         phase = f"POST-PEAK (Peak {peak_sigma:.2f}σ at {peak_time_utc.strftime('%d %b %H:%M UTC')})"
 
-    # Physical bottleneck saturation (%) accumulates slower and drains slower than raw sigma
     cumulative_load = float(np.mean(sigma_series[-4:]))
     saturation_pct = float(np.clip(tau_1 - 6.5 + (cumulative_load / 3.0) * (tau_2 - tau_1 + 8.0), 40.0, 99.2))
 
-    # Calculate saturation rate (%/hr) over last 12h to project exact wall-clock breach of tau_2
     recent_rate_per_hr = max(0.18, (sigma_series[-1] - sigma_series[-3]) / 12.0 + (saturation_pct - tau_1) * 0.04)
     headroom_pct = max(0.0, tau_2 - saturation_pct)
     hours_to_tau2 = headroom_pct / recent_rate_per_hr
