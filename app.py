@@ -67,8 +67,20 @@ with st.expander(
     f"🌍 Planetary 34-Node Live Triage Board (Auto-Sorted — Top Active Hot-Spot: {ranked_corridors[0]})",
     expanded=True,
 ):
+    def highlight_status(row):
+        status = str(row["Status"])
+        if "RED" in status:
+            return ["background-color: rgba(255, 75, 75, 0.25); color: #ff4b4b"] * len(row)
+        elif "ORANGE" in status:
+            return ["background-color: rgba(255, 140, 0, 0.25); color: #ffa500"] * len(row)
+        elif "YELLOW" in status:
+            return ["background-color: rgba(255, 215, 0, 0.20); color: #ffd700"] * len(row)
+        else:
+            return ["background-color: rgba(46, 204, 113, 0.15); color: #2ecc71"] * len(row)
+
+    styled_triage_df = triage_df.drop(columns=["_score"]).style.apply(highlight_status, axis=1)
     st.dataframe(
-        triage_df.drop(columns=["_score"]),
+        styled_triage_df,
         use_container_width=True,
         hide_index=True,
         height=210,
@@ -208,18 +220,21 @@ with col_cmd:
         cutoff_utc = deadline_utc - timedelta(hours=float(primary_haven["est_transit_hrs"]))
         st.error(
             f"**{tel['alert_tier']} — ACTION REQUIRED BEFORE {deadline_utc.strftime('%H:%M UTC')} ({deadline_ist.strftime('%H:%M IST')}):**\n"
-            f"1. **Bottleneck Status:** Anomaly is `{tel['current_sigma']:.2f}σ` and saturation is at **`{tel['saturation_pct']:.1f}%`** (τ₁ Limit: `{tel['tau_1']:.1f}%`).\n"
-            f"2. **Evacuation Cut-Off:** Convoy to **{primary_haven['territory_name']}** (`{primary_haven['est_transit_hrs']}h`) must clear elevation no later than **`{cutoff_utc.strftime('%d %b %H:%M UTC')}`**."
+            f"1. **Meteo Drivers:** Rain (72h): `{tel['total_rain_72h']:.1f} mm` | Max Gust: `{tel['max_gust_kmh']:.0f} km/h` | Pressure: `{tel['min_pressure_hpa']:.0f} hPa`\n"
+            f"2. **Bottleneck Status:** Anomaly `{tel['current_sigma']:.2f}σ`, Saturation: **`{tel['saturation_pct']:.1f}%`** (τ₁ Limit: `{tel['tau_1']:.1f}%`).\n"
+            f"3. **Evacuation Cut-Off:** Convoy to **{primary_haven['territory_name']}** (`{primary_haven['est_transit_hrs']}h`) must clear elevation no later than **`{cutoff_utc.strftime('%d %b %H:%M UTC')}`**."
         )
     elif "YELLOW" in tel["alert_tier"]:
         st.warning(
             f"**YELLOW / WATCH — PRE-POSITIONING REQUIRED:**\n"
-            f"1. **Status:** Sector approaching critical thresholds (`{tel['current_sigma']:.2f}σ`, saturation `{tel['saturation_pct']:.1f}%`).\n"
-            f"2. **Action:** Place Tier-1 Safe Haven route to **{primary_haven['territory_name']}** on 1-hour standby notice."
+            f"1. **Meteo Drivers:** Rain (72h): `{tel['total_rain_72h']:.1f} mm` | Max Gust: `{tel['max_gust_kmh']:.0f} km/h`\n"
+            f"2. **Status:** Sector approaching critical thresholds (`{tel['current_sigma']:.2f}σ`, saturation `{tel['saturation_pct']:.1f}%`).\n"
+            f"3. **Action:** Place route to **{primary_haven['territory_name']}** on 1-hour standby notice."
         )
     else:
         st.success(
             f"**GREEN / NORMAL — BASELINE SURVEILLANCE:**\n"
-            f"1. **Status:** Anomaly (`{tel['current_sigma']:.2f}σ`) and saturation (`{tel['saturation_pct']:.1f}%`) are stable below τ₁.\n"
-            f"2. **Readiness:** Safe Haven corridor to **{primary_haven['territory_name']}** pre-mapped."
+            f"1. **Meteo Drivers:** Rain (72h): `{tel['total_rain_72h']:.1f} mm` | Max Gust: `{tel['max_gust_kmh']:.0f} km/h` | Pressure: `{tel['min_pressure_hpa']:.0f} hPa`\n"
+            f"2. **Status:** Anomaly (`{tel['current_sigma']:.2f}σ`) and saturation (`{tel['saturation_pct']:.1f}%`) are stable below τ₁.\n"
+            f"3. **Readiness:** Safe Haven corridor to **{primary_haven['territory_name']}** pre-mapped."
         )
