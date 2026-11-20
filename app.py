@@ -16,7 +16,7 @@ df_zones = engine.load_territory_matrix("Matrix.csv")
 st.sidebar.header("📡 Telemetry Feed Mode")
 feed_mode = st.sidebar.radio(
     "Select Operational Stream",
-    ["Live Real-Time Telemetry (USGS Seismic)", "3:00 AM Post-Peak Stress-Test Drill"],
+    ["Live Real-Time Telemetry (USGS & Meteo)", "3:00 AM Post-Peak Stress-Test Drill"],
     index=0,
 )
 is_live = feed_mode.startswith("Live")
@@ -78,7 +78,10 @@ with st.expander(
         else:
             return ["background-color: rgba(46, 204, 113, 0.15); color: #2ecc71"] * len(row)
 
-    styled_triage_df = triage_df.drop(columns=["_score"]).style.apply(highlight_status, axis=1)
+    display_df = triage_df.drop(columns=["_score"])
+    styled_triage_df = display_df.style.apply(highlight_status, axis=1).format(
+        {col: "{:.1f}" for col in display_df.select_dtypes(include=["float", "float64"]).columns}
+    )
     st.dataframe(
         styled_triage_df,
         use_container_width=True,
@@ -93,7 +96,7 @@ st.caption(f"**ACTIVE DATA STREAM:** {tel['source_summary']}")
 k1, k2, k3, k4 = st.columns(4)
 k1.metric(
     f"Current Anomaly (Gate: {engine.FIXED_SIGMA_GATE:.1f}σ)",
-    f"{tel['current_sigma']:.2f}σ",
+    f"{tel['current_sigma']:.1f}σ",
     delta=tel["phase"],
     delta_color="inverse" if tel["is_sigma_breach"] else "off",
 )
@@ -138,7 +141,7 @@ with col_map:
     active_point = pd.DataFrame(
         [
             {
-                "name": f"{selected_zone_name} ({tel['current_sigma']:.2f}σ | Load {tel['saturation_pct']:.1f}%)",
+                "name": f"{selected_zone_name} ({tel['current_sigma']:.1f}σ | Load {tel['saturation_pct']:.1f}%)",
                 "lat": float(zone_data["latitude"]),
                 "lon": float(zone_data["longitude"]),
                 "color": active_color,
@@ -220,21 +223,21 @@ with col_cmd:
         cutoff_utc = deadline_utc - timedelta(hours=float(primary_haven["est_transit_hrs"]))
         st.error(
             f"**{tel['alert_tier']} — ACTION REQUIRED BEFORE {deadline_utc.strftime('%H:%M UTC')} ({deadline_ist.strftime('%H:%M IST')}):**\n"
-            f"1. **Meteo Drivers:** Rain (72h): `{tel['total_rain_72h']:.1f} mm` | Max Gust: `{tel['max_gust_kmh']:.0f} km/h` | Pressure: `{tel['min_pressure_hpa']:.0f} hPa`\n"
-            f"2. **Bottleneck Status:** Anomaly `{tel['current_sigma']:.2f}σ`, Saturation: **`{tel['saturation_pct']:.1f}%`** (τ₁ Limit: `{tel['tau_1']:.1f}%`).\n"
+            f"1. **Meteo Drivers:** Rain (72h): `{tel['total_rain_72h']:.1f} mm` | Max Gust: `{tel['max_gust_kmh']:.1f} km/h` | Pressure: `{tel['min_pressure_hpa']:.1f} hPa`\n"
+            f"2. **Bottleneck Status:** Anomaly `{tel['current_sigma']:.1f}σ`, Saturation: **`{tel['saturation_pct']:.1f}%`** (τ₁ Limit: `{tel['tau_1']:.1f}%`).\n"
             f"3. **Evacuation Cut-Off:** Convoy to **{primary_haven['territory_name']}** (`{primary_haven['est_transit_hrs']}h`) must clear elevation no later than **`{cutoff_utc.strftime('%d %b %H:%M UTC')}`**."
         )
     elif "YELLOW" in tel["alert_tier"]:
         st.warning(
             f"**YELLOW / WATCH — PRE-POSITIONING REQUIRED:**\n"
-            f"1. **Meteo Drivers:** Rain (72h): `{tel['total_rain_72h']:.1f} mm` | Max Gust: `{tel['max_gust_kmh']:.0f} km/h`\n"
-            f"2. **Status:** Sector approaching critical thresholds (`{tel['current_sigma']:.2f}σ`, saturation `{tel['saturation_pct']:.1f}%`).\n"
+            f"1. **Meteo Drivers:** Rain (72h): `{tel['total_rain_72h']:.1f} mm` | Max Gust: `{tel['max_gust_kmh']:.1f} km/h`\n"
+            f"2. **Status:** Sector approaching critical thresholds (`{tel['current_sigma']:.1f}σ`, saturation `{tel['saturation_pct']:.1f}%`).\n"
             f"3. **Action:** Place route to **{primary_haven['territory_name']}** on 1-hour standby notice."
         )
     else:
         st.success(
             f"**GREEN / NORMAL — BASELINE SURVEILLANCE:**\n"
-            f"1. **Meteo Drivers:** Rain (72h): `{tel['total_rain_72h']:.1f} mm` | Max Gust: `{tel['max_gust_kmh']:.0f} km/h` | Pressure: `{tel['min_pressure_hpa']:.0f} hPa`\n"
-            f"2. **Status:** Anomaly (`{tel['current_sigma']:.2f}σ`) and saturation (`{tel['saturation_pct']:.1f}%`) are stable below τ₁.\n"
+            f"1. **Meteo Drivers:** Rain (72h): `{tel['total_rain_72h']:.1f} mm` | Max Gust: `{tel['max_gust_kmh']:.1f} km/h` | Pressure: `{tel['min_pressure_hpa']:.1f} hPa`\n"
+            f"2. **Status:** Anomaly (`{tel['current_sigma']:.1f}σ`) and saturation (`{tel['saturation_pct']:.1f}%`) are stable below τ₁.\n"
             f"3. **Readiness:** Safe Haven corridor to **{primary_haven['territory_name']}** pre-mapped."
         )
