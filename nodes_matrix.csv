@@ -4,5 +4,32 @@ node_id,territory_name,latitude,longitude,elevation_m,tau_1_threshold,tau_2_ceil
 03,Hindu Kush Corridor,36.5000,71.5000,2500,78.0,94.0
 04,Indus Basin Plains,30.3753,69.3451,150,75.0,90.0
 05,Chennai Basin (Cyclone Watch),13.0827,80.2707,6,85.0,95.2
-06,Mumbai Metropolitan Corridor,19.0760,72.8777,14,80.0,92.0
+06,Makran Subduction Trench,25.1200,62.3200,12,84.5,96.0
 07,Gangetic Plain - East,25.5941,85.1376,53,77.0,91.0
+08,Kolkata & Sundarbans Delta,22.5726,88.3639,9,83.5,95.0
+09,Andhra Coast (Godavari-Krishna Basin),16.5062,80.6480,11,84.5,95.5
+10,Himalayan Arc - Eastern (Sikkim-Teesta),27.3389,88.6065,1650,81.0,94.5
+11,Uttarakhand & Alaknanda Corridor,30.4598,79.3220,1850,80.5,94.5
+12,Assam & Brahmaputra Valley,26.1445,91.7362,55,82.5,95.0
+13,Punjab & Sutlej-Beas Alluvial Plain,31.6340,74.8723,234,79.0,93.0
+14,Kutch & Saurashtra Seismic Zone,23.2420,69.6669,42,81.5,94.0
+15,Odisha & Mahanadi Cyclone Corridor,20.2961,85.8245,45,84.0,95.5
+16,Kerala Western Ghats Escarpment,10.8505,76.2711,320,82.0,94.0
+17,Narmada-Tapi Rift Valley,21.7051,72.9959,28,78.5,91.5
+18,Andaman & Nicobar Subduction Trench,11.7401,92.6586,15,86.0,96.5
+19,Karakoram & Siachen Cryosphere,35.4212,77.1095,4800,79.5,93.5
+20,Kathmandu Valley & Bagmati Basin,27.7172,85.3240,1400,82.5,96.0
+21,Meghalaya Plateau & Shillong Massif,25.5788,91.8933,1496,81.0,94.5
+22,Cascadia Subduction Zone (Pacific NW),45.5152,-122.6784,15,84.0,96.0
+23,San Andreas Fault - Southern Sector,34.0522,-118.2437,89,83.0,95.5
+24,Nankai Trough & Tokai Corridor,34.9756,138.3828,22,85.5,96.5
+25,Tokyo Bay & Kanto Plain,35.6762,139.6503,40,85.0,96.0
+26,Anatolian Fault - Marmara Corridor,41.0082,28.9784,39,83.5,95.5
+27,Chilean Subduction Megathrust,33.4489,-70.6693,570,84.5,96.0
+28,Sunda Strait & Java Volcanic Arc,-6.2088,106.8456,8,85.0,96.0
+29,Manila Trench & Luzon Corridor,14.5995,120.9842,16,84.0,95.5
+30,Rhine-Meuse Delta Flood Gate,51.9244,4.4777,2,81.0,93.0
+31,Tier-1 Safe Haven: Pune Deccan Plateau,18.5204,73.8567,560,92.0,98.5
+32,Tier-1 Safe Haven: Bengaluru Mysore Plateau,12.9716,77.5946,920,93.0,99.0
+33,Tier-1 Safe Haven: Hyderabad Telangana Shield,17.3850,78.4867,505,92.5,98.5
+34,Tier-1 Safe Haven: Nagpur Central Craton,21.1458,79.0882,310,92.0,98.5
