@@ -66,7 +66,6 @@ def fetch_global_usgs_quakes(now_iso_hour):
 
 
 def fetch_sector_meteo(lat, lon):
-    """Fast, single-point 72h precipitation, wind gust & pressure telemetry."""
     try:
         url = "https://api.open-meteo.com/v1/forecast"
         params = {
@@ -121,7 +120,6 @@ def evaluate_all_corridors(df_zones, live_mode=True, now_utc=None):
                     bin_idx = int(np.clip(12 - round(hrs_ago / 6.0), 0, 12))
                     seismic_bins[bin_idx] += (10 ** (0.75 * max(0.0, q["mag"] - 2.0))) * 0.14
 
-            # Pull live meteorological surge for coastal/cyclone-exposed basins
             rain_bins = np.zeros(13)
             total_rain_72h = 0.0
             max_gust_kmh = 0.0
@@ -187,7 +185,6 @@ def evaluate_all_corridors(df_zones, live_mode=True, now_utc=None):
         peak_sigma = float(sigma_series[peak_idx])
         peak_time_utc = timestamps[peak_idx]
 
-        # Rapid Intensification Check (Fast-Moving Cyclone Escalation Rule)
         delta_sigma_12h = float(sigma_series[-1] - sigma_series[-3])
         rapid_intensification = (delta_sigma_12h >= 1.2) or (max_gust_kmh >= 85.0) or (total_rain_72h >= 110.0)
 
@@ -270,4 +267,23 @@ def evaluate_all_corridors(df_zones, live_mode=True, now_utc=None):
 
 def rank_safe_havens(df_all, active_zone):
     havens = df_all[
-        df_all["territory_name"].str.contains("Safe Haven", case=False, na
+        df_all["territory_name"].str.contains("Safe Haven", case=False, na=False)
+    ].copy()
+    if havens.empty:
+        return havens
+
+    lat1, lon1 = float(active_zone["latitude"]), float(active_zone["longitude"])
+    elev1 = float(active_zone["elevation_m"])
+
+    havens["distance_km"] = havens.apply(
+        lambda r: round(
+            haversine_km(lat1, lon1, float(r["latitude"]), float(r["longitude"])), 1
+        ),
+        axis=1,
+    )
+    havens["elevation_gain_m"] = (havens["elevation_m"] - elev1).astype(int)
+    havens["est_transit_hrs"] = (havens["distance_km"] / 50.0).round(1)
+    havens["cap_status"] = havens["distance_km"].apply(
+        lambda d: "PRIMARY CORRIDOR (OPEN)" if d < 1200 else "SECONDARY CONTINGENCY"
+    )
+    return havens.sort_values("distance_km").reset_index(drop=True)
