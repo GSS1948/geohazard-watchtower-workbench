@@ -205,4 +205,4 @@ def evaluate_all_corridors(df_zones, live_mode=True, now_utc=None):
             quake_count = 0
             max_mag = 0.0
             total_rain_72h = 0.0
-            source_summary = "STRESS-TEST
+            source_summary = "STRESS-TEST DRILL - Simulated Post-Peak Drainage Lag Scenario"
