@@ -178,6 +178,7 @@ def evaluate_all_corridors(df_zones, live_mode=True, now_utc=None):
             quake_count = 0
             max_gust_kmh = 0.0
             total_rain_72h = 0.0
+            min_pressure_hpa = 1013.0
             source_summary = "STRESS-TEST DRILL — Simulated Fast-Moving Cyclone & Drainage Lag Scenario"
 
         current_sigma = float(sigma_series[-1])
@@ -243,6 +244,9 @@ def evaluate_all_corridors(df_zones, live_mode=True, now_utc=None):
             "is_tau1_breach": is_tau1_breach,
             "source_summary": source_summary,
             "alert_tier": alert_tier,
+            "total_rain_72h": total_rain_72h,
+            "max_gust_kmh": max_gust_kmh,
+            "min_pressure_hpa": min_pressure_hpa,
         }
 
         if not is_haven:
