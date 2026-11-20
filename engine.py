@@ -46,7 +46,7 @@ def fetch_global_usgs_quakes(now_iso_hour):
             "endtime": now_utc.strftime("%Y-%m-%dT%H:%M:%S"),
             "minmagnitude": 2.5,
         }
-        resp = requests.get(url, params=params, timeout=5)
+        resp = requests.get(url, params=params, timeout=4)
         if resp.status_code == 200:
             for feat in resp.json().get("features", []):
                 coords = feat.get("geometry", {}).get("coordinates", [])
@@ -65,11 +65,32 @@ def fetch_global_usgs_quakes(now_iso_hour):
     return events
 
 
+def fetch_sector_meteo(lat, lon):
+    """Fast, single-point 72h precipitation, wind gust & pressure telemetry."""
+    try:
+        url = "https://api.open-meteo.com/v1/forecast"
+        params = {
+            "latitude": round(lat, 4),
+            "longitude": round(lon, 4),
+            "hourly": "precipitation,wind_gusts_10m,pressure_msl",
+            "past_days": 3,
+            "forecast_days": 1,
+            "timezone": "UTC",
+        }
+        resp = requests.get(url, params=params, timeout=3)
+        if resp.status_code == 200:
+            return resp.json().get("hourly", {})
+    except Exception:
+        pass
+    return {}
+
+
 def evaluate_all_corridors(df_zones, live_mode=True, now_utc=None):
     if now_utc is None:
         now_utc = datetime.now(timezone.utc)
 
     now_hour_iso = now_utc.replace(minute=0, second=0, microsecond=0).isoformat()
+    start_utc = now_utc - timedelta(hours=72)
     timestamps = [now_utc - timedelta(hours=6 * (12 - i)) for i in range(13)]
     global_quakes = fetch_global_usgs_quakes(now_hour_iso) if live_mode else []
 
@@ -85,6 +106,7 @@ def evaluate_all_corridors(df_zones, live_mode=True, now_utc=None):
         lat = float(row["latitude"])
         lon = float(row["longitude"])
         is_haven = "safe haven" in name.lower()
+        is_cyclone_zone = any(k in name.lower() for k in ["cyclone", "chennai", "bengal", "delta", "typhoon", "coast"])
 
         if live_mode:
             quake_count = 0
@@ -99,10 +121,52 @@ def evaluate_all_corridors(df_zones, live_mode=True, now_utc=None):
                     bin_idx = int(np.clip(12 - round(hrs_ago / 6.0), 0, 12))
                     seismic_bins[bin_idx] += (10 ** (0.75 * max(0.0, q["mag"] - 2.0))) * 0.14
 
+            # Pull live meteorological surge for coastal/cyclone-exposed basins
+            rain_bins = np.zeros(13)
+            total_rain_72h = 0.0
+            max_gust_kmh = 0.0
+            min_pressure_hpa = 1013.0
+            meteo_active = False
+
+            if is_cyclone_zone and not is_haven:
+                hourly = fetch_sector_meteo(lat, lon)
+                times = hourly.get("time", [])
+                precips = hourly.get("precipitation", [])
+                gusts = hourly.get("wind_gusts_10m", [])
+                pressures = hourly.get("pressure_msl", [])
+                if times:
+                    meteo_active = True
+                    for t_str, p_val, g_val, pr_val in zip(times, precips, gusts, pressures):
+                        dt = datetime.fromisoformat(t_str).replace(tzinfo=timezone.utc)
+                        if start_utc <= dt <= now_utc:
+                            hrs_ago = (now_utc - dt).total_seconds() / 3600.0
+                            bin_idx = int(np.clip(12 - round(hrs_ago / 6.0), 0, 12))
+                            p_clean = float(p_val or 0.0)
+                            g_clean = float(g_val or 0.0)
+                            pr_clean = float(pr_val or 1013.0)
+                            rain_bins[bin_idx] += p_clean
+                            total_rain_72h += p_clean
+                            max_gust_kmh = max(max_gust_kmh, g_clean)
+                            min_pressure_hpa = min(min_pressure_hpa, pr_clean)
+
             baseline_noise = 0.45 + (0.15 if elev < 50 else 0.0)
-            sigma_series = np.clip(baseline_noise + seismic_bins, 0.35, 4.20)
-            saturation_pct = float(np.clip(45.0 + np.mean(sigma_series[-4:]) * 14.0 + (max_mag * 2.0), 25.0, 98.5))
-            source_summary = f"LIVE USGS FEED (300km): {quake_count} quakes (Max M{max_mag:.1f})"
+            hydro_sigma = (rain_bins / 15.0) * 1.6 + (max(0.0, max_gust_kmh - 55.0) / 35.0)
+            sigma_series = np.clip(baseline_noise + seismic_bins + hydro_sigma, 0.35, 4.50)
+
+            rain_load = min(32.0, total_rain_72h * 0.35)
+            gust_load = min(18.0, max(0.0, max_gust_kmh - 45.0) * 0.35)
+            seismic_load = (max_mag * 2.0) if quake_count > 0 else 0.0
+            saturation_pct = float(
+                np.clip(45.0 + np.mean(sigma_series[-4:]) * 12.0 + rain_load + gust_load + seismic_load, 25.0, 99.0)
+            )
+
+            if meteo_active:
+                source_summary = (
+                    f"MULTI-HAZARD LIVE FEED — Rain 72h: {total_rain_72h:.1f}mm | Max Gust: {max_gust_kmh:.0f} km/h | "
+                    f"Min Pressure: {min_pressure_hpa:.0f} hPa | USGS Quakes: {quake_count}"
+                )
+            else:
+                source_summary = f"LIVE USGS SEISMIC FEED (300km): {quake_count} quakes (Max M{max_mag:.1f})"
         else:
             rng = np.random.default_rng(seed=2026 + node_id * 17)
             base_level = 1.10 + (100.0 - tau_1) * 0.035 + (0.20 if elev < 50 else 0.0)
@@ -114,23 +178,32 @@ def evaluate_all_corridors(df_zones, live_mode=True, now_utc=None):
                 np.clip(tau_1 - 6.5 + (cumulative_load / 3.0) * (tau_2 - tau_1 + 8.0), 40.0, 99.2)
             )
             quake_count = 0
-            max_mag = 0.0
-            source_summary = "STRESS-TEST DRILL — Simulated Post-Peak Drainage Lag Scenario"
+            max_gust_kmh = 0.0
+            total_rain_72h = 0.0
+            source_summary = "STRESS-TEST DRILL — Simulated Fast-Moving Cyclone & Drainage Lag Scenario"
 
         current_sigma = float(sigma_series[-1])
         peak_idx = int(np.argmax(sigma_series))
         peak_sigma = float(sigma_series[peak_idx])
         peak_time_utc = timestamps[peak_idx]
 
+        # Rapid Intensification Check (Fast-Moving Cyclone Escalation Rule)
+        delta_sigma_12h = float(sigma_series[-1] - sigma_series[-3])
+        rapid_intensification = (delta_sigma_12h >= 1.2) or (max_gust_kmh >= 85.0) or (total_rain_72h >= 110.0)
+
         phase = (
-            "RISING / CRESTING NOW"
-            if peak_idx >= 11
-            else f"POST-PEAK (Peak {peak_sigma:.2f}σ at {peak_time_utc.strftime('%d %b %H:%M UTC')})"
+            "RAPID INTENSIFICATION / SURGING"
+            if rapid_intensification
+            else (
+                "RISING / CRESTING NOW"
+                if peak_idx >= 11
+                else f"POST-PEAK (Peak {peak_sigma:.2f}σ at {peak_time_utc.strftime('%d %b %H:%M UTC')})"
+            )
         )
 
         recent_rate_per_hr = max(
             0.15,
-            (sigma_series[-1] - sigma_series[-3]) / 12.0 + max(0.0, saturation_pct - tau_1) * 0.04,
+            delta_sigma_12h / 12.0 + max(0.0, saturation_pct - tau_1) * 0.04,
         )
         headroom_pct = max(0.0, tau_2 - saturation_pct)
         hours_to_tau2 = headroom_pct / recent_rate_per_hr
@@ -142,10 +215,10 @@ def evaluate_all_corridors(df_zones, live_mode=True, now_utc=None):
         if is_haven:
             alert_tier = "SAFE HAVEN"
             severity_score = -100.0
-        elif is_sigma_breach and is_tau1_breach:
-            alert_tier = "RED / CRITICAL BREACH"
+        elif (is_sigma_breach and is_tau1_breach) or (rapid_intensification and (is_sigma_breach or is_tau1_breach)):
+            alert_tier = "RED / CRITICAL ESCALATION"
             severity_score = 150.0 + (saturation_pct - tau_1) + peak_sigma * 5.0
-        elif is_sigma_breach or is_tau1_breach or peak_sigma >= 3.5:
+        elif is_sigma_breach or is_tau1_breach or peak_sigma >= 3.5 or rapid_intensification:
             alert_tier = "ORANGE / HIGH ALERT"
             severity_score = 100.0 + (saturation_pct - tau_1) + peak_sigma * 5.0
         elif peak_sigma >= 2.2 or (tau_1 - saturation_pct) <= 12.0:
@@ -197,23 +270,4 @@ def evaluate_all_corridors(df_zones, live_mode=True, now_utc=None):
 
 def rank_safe_havens(df_all, active_zone):
     havens = df_all[
-        df_all["territory_name"].str.contains("Safe Haven", case=False, na=False)
-    ].copy()
-    if havens.empty:
-        return havens
-
-    lat1, lon1 = float(active_zone["latitude"]), float(active_zone["longitude"])
-    elev1 = float(active_zone["elevation_m"])
-
-    havens["distance_km"] = havens.apply(
-        lambda r: round(
-            haversine_km(lat1, lon1, float(r["latitude"]), float(r["longitude"])), 1
-        ),
-        axis=1,
-    )
-    havens["elevation_gain_m"] = (havens["elevation_m"] - elev1).astype(int)
-    havens["est_transit_hrs"] = (havens["distance_km"] / 50.0).round(1)
-    havens["cap_status"] = havens["distance_km"].apply(
-        lambda d: "PRIMARY CORRIDOR (OPEN)" if d < 1200 else "SECONDARY CONTINGENCY"
-    )
-    return havens.sort_values("distance_km").reset_index(drop=True)
+        df_all["territory_name"].str.contains("Safe Haven", case=False, na
