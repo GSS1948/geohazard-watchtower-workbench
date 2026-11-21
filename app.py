@@ -67,19 +67,19 @@ with st.expander(
     f"🌍 Planetary 34-Node Live Triage Board (Auto-Sorted — Top Active Hot-Spot: {ranked_corridors[0]})",
     expanded=True,
 ):
-    def highlight_status(row):
+    def highlight_high_contrast(row):
         status = str(row["Status"])
         if "RED" in status:
-            return ["background-color: rgba(255, 75, 75, 0.25); color: #ff4b4b"] * len(row)
+            return ["background-color: rgba(255, 50, 50, 0.45); color: #ffffff; font-weight: bold"] * len(row)
         elif "ORANGE" in status:
-            return ["background-color: rgba(255, 140, 0, 0.25); color: #ffa500"] * len(row)
+            return ["background-color: rgba(255, 140, 0, 0.45); color: #ffffff; font-weight: bold"] * len(row)
         elif "YELLOW" in status:
-            return ["background-color: rgba(255, 215, 0, 0.20); color: #ffd700"] * len(row)
+            return ["background-color: rgba(218, 165, 32, 0.40); color: #ffffff; font-weight: bold"] * len(row)
         else:
-            return ["background-color: rgba(46, 204, 113, 0.15); color: #2ecc71"] * len(row)
+            return ["background-color: rgba(46, 204, 113, 0.30); color: #ffffff; font-weight: bold"] * len(row)
 
     display_df = triage_df.drop(columns=["_score"])
-    styled_triage_df = display_df.style.apply(highlight_status, axis=1).format(
+    styled_triage_df = display_df.style.apply(highlight_high_contrast, axis=1).format(
         {col: "{:.1f}" for col in display_df.select_dtypes(include=["float", "float64"]).columns}
     )
     st.dataframe(
@@ -129,34 +129,34 @@ col_map, col_cmd = st.columns([1.3, 1.1])
 with col_map:
     st.subheader(f"Spatial Contagion & Evacuation Vector: {selected_zone_name}")
     active_color = (
-        [255, 50, 50, 230]
+        [255, 50, 50, 240]
         if "RED" in tel["alert_tier"]
         else (
-            [255, 140, 0, 220]
+            [255, 140, 0, 240]
             if "ORANGE" in tel["alert_tier"]
-            else ([255, 215, 0, 220] if "YELLOW" in tel["alert_tier"] else [46, 204, 113, 220])
+            else ([255, 215, 0, 240] if "YELLOW" in tel["alert_tier"] else [46, 204, 113, 240])
         )
     )
 
     active_point = pd.DataFrame(
         [
             {
-                "name": f"{selected_zone_name} ({tel['current_sigma']:.1f}σ | Load {tel['saturation_pct']:.1f}%)",
+                "name": f"DISASTER HUB: {selected_zone_name} ({tel['current_sigma']:.1f}σ | Load {tel['saturation_pct']:.1f}%)",
                 "lat": float(zone_data["latitude"]),
                 "lon": float(zone_data["longitude"]),
                 "color": active_color,
-                "radius": 48000,
+                "radius": 55000,
             }
         ]
     )
     safe_points = pd.DataFrame(
         [
             {
-                "name": f"{r['territory_name']} ({r['distance_km']} km | +{r['elevation_gain_m']}m)",
+                "name": f"⭐ SAFE HAVEN: {r['territory_name']} | Distance: {r['distance_km']} km | Elev Gain: +{r['elevation_gain_m']}m",
                 "lat": float(r["latitude"]),
                 "lon": float(r["longitude"]),
-                "color": [0, 212, 255, 220],
-                "radius": 38000,
+                "color": [0, 212, 255, 255],
+                "radius": 42000,
             }
             for _, r in havens_df.iterrows()
         ]
@@ -189,8 +189,8 @@ with col_map:
                 get_source_position=["source_lon", "source_lat"],
                 get_target_position=["target_lon", "target_lat"],
                 get_source_color=active_color,
-                get_target_color=[0, 212, 255, 220],
-                get_width=5,
+                get_target_color=[0, 212, 255, 240],
+                get_width=6,
             )
         )
     st.pydeck_chart(
@@ -241,3 +241,13 @@ with col_cmd:
             f"2. **Status:** Anomaly (`{tel['current_sigma']:.1f}σ`) and saturation (`{tel['saturation_pct']:.1f}%`) are stable below τ₁.\n"
             f"3. **Readiness:** Safe Haven corridor to **{primary_haven['territory_name']}** pre-mapped."
         )
+
+st.markdown("---")
+st.subheader("⭐ Tier-1 Safe Haven Proximity & Elevation Matrix")
+st.caption("All pre-calibrated regional and planetary safe havens ranked by proximity to the active disaster center.")
+if not havens_df.empty:
+    haven_display = havens_df[["territory_name", "distance_km", "elevation_gain_m", "est_transit_hrs", "elevation_m"]].copy()
+    haven_display.columns = ["Safe Haven Corridor", "Distance from Disturbance (km)", "Elevation Gain vs Sector (m)", "Est. Transit (hrs)", "Base Elevation (m)"]
+    st.dataframe(haven_display, use_container_width=True, hide_index=True)
+else:
+    st.info("No safe havens registered in matrix.")
