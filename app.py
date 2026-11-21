@@ -16,13 +16,14 @@ df_zones = engine.load_territory_matrix("Matrix.csv")
 st.sidebar.header("📡 Telemetry Feed Mode")
 feed_mode = st.sidebar.radio(
     "Select Operational Stream",
-    ["Live Real-Time Telemetry (USGS & Meteo)", "3:00 AM Post-Peak Stress-Test Drill"],
+    ["Live Real-Time Telemetry (USGS & Meteo)", "Historical Hindcast Verification (2024 Archive)", "3:00 AM Post-Peak Stress-Test Drill"],
     index=0,
 )
 is_live = feed_mode.startswith("Live")
+is_hindcast = "Hindcast" in feed_mode
 
 with st.spinner("Executing planetary 34-node sweep..."):
-    telemetry_map, triage_df = engine.evaluate_all_corridors(df_zones, live_mode=is_live)
+    telemetry_map, triage_df = engine.evaluate_all_corridors(df_zones, live_mode=is_live, hindcast_mode=is_hindcast)
 
 ranked_corridors = triage_df["Corridor"].tolist()
 
@@ -62,6 +63,16 @@ st.markdown(
     f"**LIVE WATCH CLOCK:** `{now_utc.strftime('%d %b %Y, %H:%M UTC')}` | `{now_ist.strftime('%H:%M IST')}`  "
     f"•  **GLOBAL SWEEP:** `🔴 {red_count} RED` | `🟠 {orange_count} ORANGE` | `🟡 {yellow_count} YELLOW` | `🟢 {green_count} GREEN`"
 )
+
+# Institutional Quick-Start Guide for Reviewers
+with st.expander("📖 Duty Officer Quick-Start Guide & Methodology Overview", expanded=False):
+    st.markdown(
+        "### How the Geohazard Watchtower Works (2-Minute Briefing)\n"
+        "1. **The 3.0σ Non-Random Gate:** Every sector is monitored continuously using a fixed 99.73% statistical confidence threshold ($3.0\\sigma$) to filter out background noise.\n"
+        "2. **The $\\tau_1$ Drainage Saturation Limit:** When local rainfall and hydrological loading exceed physical basin absorption limits (expressed as $\\tau_1$ percentage), drainage backup occurs, signaling potential severe waterlogging.\n"
+        "3. **The $\\tau_2$ Failure Ceiling:** Represents the irreversible regional cascade limit where infrastructure is severely compromised.\n"
+        "4. **Tactical Upland Perimeter Tiles:** Rather than forcing impossible 900+ km cross-country evacuations, the system instantly identifies verified local high-ground tiles (**110–220 km** away) with a 2 to 4-hour transit window and **one-click Google Maps routes**."
+    )
 
 with st.expander(
     f"🌍 Planetary 34-Node Live Triage Board (Auto-Sorted — Top Active Hot-Spot: {ranked_corridors[0]})",
@@ -278,6 +289,7 @@ with col_cmd:
 st.markdown("---")
 st.subheader("⭐ Practical Safe Haven Proximity & Google Maps Evacuation Matrix")
 st.caption("Immediate tactical safe tiles (110–220 km) ranked first for civil administration, followed by strategic reserves.")
+
 if not havens_df.empty:
     haven_display = havens_df[
         ["territory_name", "haven_tier", "distance_km", "elevation_gain_m", "est_transit_hrs", "latitude", "longitude"]
@@ -304,6 +316,33 @@ if not havens_df.empty:
         column_config={
             "Google Maps Route": st.column_config.LinkColumn("Google Maps Route", display_text="🗺️ Open Route")
         },
+    )
+
+    # SITREP Text Export Button for Offline Briefings
+    sitrep_txt = (
+        f"========================================\n"
+        f"GEOHAZARD WATCHTOWER — SITUATION REPORT\n"
+        f"Generated: {now_utc.strftime('%d %b %Y, %H:%M UTC')}\n"
+        f"Sector: {selected_zone_name} [{tel['alert_tier']}]\n"
+        f"========================================\n\n"
+        f"1. METEO & HYDRAULIC DRIVERS:\n"
+        f"   - 72h Rainfall: {tel['total_rain_72h']:.1f} mm\n"
+        f"   - Max Wind Gust: {tel['max_gust_kmh']:.1f} km/h\n"
+        f"   - Barometric Pressure: {tel['min_pressure_hpa']:.1f} hPa\n"
+        f"   - Current Anomaly: {tel['current_sigma']:.1f}σ ({tel['phase']})\n"
+        f"   - Basin Saturation: {tel['saturation_pct']:.1f}% (τ₁ Limit: {tel['tau_1']:.1f}%)\n\n"
+        f"2. PRIMARY TACTICAL EVACUATION ROUTE:\n"
+        f"   - Destination: {primary_haven['territory_name']}\n"
+        f"   - Distance: {primary_haven['distance_km']} km\n"
+        f"   - Elevation Gain: +{primary_haven['elevation_gain_m']} m\n"
+        f"   - Est. Transit Time: {primary_haven['est_transit_hrs']} hours\n"
+        f"   - Google Maps Link: https://www.google.com/maps/dir/?api=1&origin={zone_data['latitude']},{zone_data['longitude']}&destination={primary_haven['latitude']},{primary_haven['longitude']}\n"
+    )
+    st.download_button(
+        label="📥 Export Official SITREP & Evacuation Matrix (TXT)",
+        data=sitrep_txt,
+        file_name=f"SITREP_{selected_zone_name.replace(' ', '_')}_{now_utc.strftime('%Y%m%d_%H%M')}.txt",
+        mime="text/plain",
     )
 else:
     st.info("No safe havens registered in matrix.")
