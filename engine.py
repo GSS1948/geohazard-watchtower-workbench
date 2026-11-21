@@ -108,7 +108,6 @@ def evaluate_all_corridors(df_zones, live_mode=True, now_utc=None, hindcast_mode
         is_cyclone_zone = any(k in name.lower() for k in ["cyclone", "chennai", "bengal", "delta", "typhoon", "coast"])
 
         if hindcast_mode:
-            # Historical validation scenario (Out-of-sample stress test against heavy regional precipitation event)
             rng = np.random.default_rng(seed=1948 + node_id * 31)
             is_hotspot = is_cyclone_zone or "delhi" in name.lower() or "mumbai" in name.lower()
             rain_val = rng.uniform(115.0, 185.0) if is_hotspot else rng.uniform(15.0, 45.0)
@@ -116,7 +115,7 @@ def evaluate_all_corridors(df_zones, live_mode=True, now_utc=None, hindcast_mode
             
             sigma_series = np.clip(rng.normal(3.2 if is_hotspot else 1.2, 0.3, 13), 0.5, 4.4)
             if is_hotspot:
-                sigma_series[-3:] = [3.6, 3.9, 4.1] # Surging to peak
+                sigma_series[-3:] = [3.6, 3.9, 4.1]
             
             total_rain_72h = rain_val
             max_gust_kmh = gust_val
