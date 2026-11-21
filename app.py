@@ -1,3 +1,100 @@
+col_map, col_cmd = st.columns([1.3, 1.1])
+
+with col_map:
+    st.subheader(f"Spatial Contagion & Safe Haven Stars (★): {selected_zone_name}")
+    active_color = (
+        [211, 47, 47, 245]
+        if "RED" in tel["alert_tier"]
+        else (
+            [239, 108, 0, 245]
+            if "ORANGE" in tel["alert_tier"]
+            else ([255, 214, 0, 245] if "YELLOW" in tel["alert_tier"] else [46, 125, 50, 245])
+        )
+    )
+
+    active_point = pd.DataFrame(
+        [
+            {
+                "name": f"DISASTER CENTER: {selected_zone_name} ({tel['current_sigma']:.1f}σ | Saturation {tel['saturation_pct']:.1f}%)",
+                "lat": float(zone_data["latitude"]),
+                "lon": float(zone_data["longitude"]),
+                "color": active_color,
+                "radius": 24000,
+            }
+        ]
+    )
+    safe_points = pd.DataFrame(
+        [
+            {
+                "name": f"★ SAFE HAVEN: {r['territory_name']} | {r['distance_km']} km | +{r['elevation_gain_m']}m elev",
+                "lat": float(r["latitude"]),
+                "lon": float(r["longitude"]),
+                "color": [16, 185, 129, 235],
+                "radius": 18000,
+                "star": "★",
+            }
+            for _, r in havens_df.iterrows()
+        ]
+    )
+    layers = [
+        pdk.Layer(
+            "ScatterplotLayer",
+            data=pd.concat([active_point, safe_points.drop(columns=["star"])], ignore_index=True),
+            get_position=["lon", "lat"],
+            get_fill_color="color",
+            get_radius="radius",
+            pickable=True,
+        ),
+        pdk.Layer(
+            "TextLayer",
+            data=safe_points,
+            get_position=["lon", "lat"],
+            get_text="star",
+            get_size=26,
+            get_color=[255, 255, 255, 255],
+            get_alignment_baseline="'center'",
+            get_text_anchor="'middle'",
+            pickable=True,
+        ),
+    ]
+    top_havens = havens_df.head(3)
+    if not top_havens.empty:
+        arc_data = pd.DataFrame(
+            [
+                {
+                    "source_lon": float(zone_data["longitude"]),
+                    "source_lat": float(zone_data["latitude"]),
+                    "target_lon": float(r["longitude"]),
+                    "target_lat": float(r["latitude"]),
+                }
+                for _, r in top_havens.iterrows()
+            ]
+        )
+        layers.append(
+            pdk.Layer(
+                "ArcLayer",
+                data=arc_data,
+                get_source_position=["source_lon", "source_lat"],
+                get_target_position=["target_lon", "target_lat"],
+                get_source_color=active_color,
+                get_target_color=[255, 255, 255, 240],
+                get_width=4,
+            )
+        )
+    st.pydeck_chart(
+        pdk.Deck(
+            map_style="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
+            initial_view_state=pdk.ViewState(
+                latitude=float(zone_data["latitude"]),
+                longitude=float(zone_data["longitude"]),
+                zoom=6.2,
+                pitch=25,
+            ),
+            layers=layers,
+            tooltip={"text": "{name}"},
+        )
+    )
+
 with col_cmd:
     st.subheader("72-Hour Unified Anomaly Trajectory (Chronological UTC)")
     chart_df = pd.DataFrame(
@@ -40,7 +137,6 @@ with col_cmd:
             f"3. **Readiness:** Tactical corridor to **{primary_haven['territory_name']}** (`{primary_haven['distance_km']} km`) pre-mapped — [Open Google Maps Route]({gmaps_url})."
         )
 
-    # Append Ground SITREP Summary Box
     with st.expander("📝 Live Ground SITREP & Scenario Analysis", expanded=True):
         st.markdown(
             f"#### 1. Telemetry Breakdown for {selected_zone_name}\n"
