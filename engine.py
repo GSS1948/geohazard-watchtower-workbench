@@ -271,10 +271,6 @@ def evaluate_all_corridors(df_zones, live_mode=True, now_utc=None):
 
 
 def rank_safe_havens(df_all, active_zone):
-    """
-    Ranks safe havens prioritizing tactical regional high ground (within 350 km) 
-    before falling back to strategic planetary cratons, matching administrative and human realities.
-    """
     havens = df_all[
         df_all["territory_name"].str.contains("Safe Haven", case=False, na=False)
     ].copy()
@@ -292,19 +288,4 @@ def rank_safe_havens(df_all, active_zone):
     )
     havens["elevation_gain_m"] = (havens["elevation_m"] - elev1).astype(int)
     havens["est_transit_hrs"] = (havens["distance_km"] / 50.0).round(1)
-    
-    # Practical priority scoring: reward local high ground within 350km
-    def tactical_score(row):
-        dist = row["distance_km"]
-        gain = row["elevation_gain_m"]
-        # Heavy preference for tactical distance (< 350km) with good elevation gain
-        if dist <= 350:
-            return dist * 0.5 - gain * 2.0
-        else:
-            return dist * 2.0 - gain * 0.5
-
-    havens["_tactical_score"] = havens.apply(tactical_score, axis=1)
-    havens["cap_status"] = havens["distance_km"].apply(
-        lambda d: "TACTICAL REGIONAL HAVEN (RECOMMENDED)" if d <= 350 else "STRATEGIC PLANETARY CONTINGENCY"
-    )
-    return havens.sort_values("_tactical_score").drop(columns=["_tactical_score"]).reset_index(drop=True)
+    return havens.sort_values("distance_km").reset_index(drop=True)
