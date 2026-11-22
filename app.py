@@ -1,3 +1,56 @@
+import streamlit as st
+import numpy as np
+import pandas as pd
+
+# ==========================================
+# PAGE CONFIGURATION & HEADER
+# ==========================================
+st.set_page_config(
+    page_title="Geohazard Watchtower Workbench",
+    page_icon="🌍",
+    layout="wide"
+)
+
+st.title("🌍 Geohazard Watchtower Workbench & Production War Room")
+st.markdown(
+    "**Theory of Constraints (TOC) & Multi-Physics Satellite Telemetry Early-Warning System** | "
+    "Global Node Registry: 34 Active Corridor Nodes"
+)
+st.divider()
+
+# ==========================================
+# CORE APP INITIALIZATION & MOCK WORKBENCH
+# ==========================================
+st.sidebar.header("🧭 Command Room Controls")
+active_mode = st.sidebar.radio(
+    "Select Operational Mode",
+    ["Global Node Status", "Historical Hindcast Verification", "SITREP Export & Dispatch"]
+)
+
+if active_mode == "Global Node Status":
+    st.subheader("🌐 Federated Global Node Registry (34 Corridors)")
+    st.markdown("Monitoring subduction megathrusts, alpine slope failure regimes, and pluvial saturation thresholds worldwide.")
+    
+    # Sample Node Summary Table
+    node_summary = pd.DataFrame([
+        {"Node ID": "NODE-01", "Corridor": "Himalayan Cryosphere (Nepal/India)", "Status": "NOMINAL", "τ₁ Margin": "78%"},
+        {"Node ID": "NODE-12", "Corridor": "Peru-Chile Subduction Megathrust", "Status": "MONITORED PULSE", "τ₁ Margin": "64%"},
+        {"Node ID": "NODE-24", "Corridor": "San Andreas Fault Margin (Cal.)", "Status": "NOMINAL", "τ₁ Margin": "82%"}
+    ])
+    st.dataframe(node_summary, use_container_width=True, hide_index=True)
+
+elif active_mode == "SITREP Export & Dispatch":
+    st.subheader("📋 Operational SITREP & Safe-Haven Dispatch")
+    st.markdown("Generate offline operational briefs and automated CAP v1.2 warning packages for civil defense authorities.")
+    if st.button("Generate Current Operational SITREP"):
+        st.success("SITREP package compiled successfully. Ready for dissemination to regional dispatch nodes.")
+
+# ==========================================
+# HISTORICAL HINDCAST & SEISMIC ATTENUATION GATE
+# ==========================================
+st.divider()
+st.subheader("📜 Historical Hindcast & Validation Module")
+
 # --- SEISMIC DEPTH ATTENUATION & NOISE SUPPRESSION GATE (TOC VALIDATION) ---
 def evaluate_seismic_bottleneck(magnitude, depth_km, epicentral_dist_km, tau1_pga_g=0.18, tau2_pga_g=0.35):
     hypocentral_dist = np.sqrt(depth_km**2 + epicentral_dist_km**2)
@@ -11,7 +64,7 @@ def evaluate_seismic_bottleneck(magnitude, depth_km, epicentral_dist_km, tau1_pg
         status = "🟢 MONITORED PULSE (< τ₁): Suppressed (Zero Alert Fatigue)"
     return round(surface_pga_g, 4), status
 
-with st.expander("🧭 Seismic Depth Attenuation Gate: Junín–Lima (Nov 21, 2026) Validation", expanded=False):
+with st.expander("🧭 Seismic Depth Attenuation Gate: Junín–Lima (Nov 21, 2026) Validation", expanded=True):
     st.markdown(
         "**Why wasn't the M6.7 Junín–Lima earthquake flagged as a red emergency?** "
         "Under Theory of Constraints ($\tau_1$ surface yield threshold = `0.18g`), hypocentral depth governs energy dissipation before reaching urban infrastructure."
