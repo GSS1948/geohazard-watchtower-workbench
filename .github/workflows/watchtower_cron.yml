@@ -2,23 +2,18 @@ name: Watchtower 6-Hour Cloud Scan
 
 on:
   schedule:
-    # Runs automatically every 6 hours (00:00, 06:00, 12:00, 18:00 UTC)
     - cron: '0 */6 * * *'
-  # Also lets you trigger a scan anytime with a single button click
   workflow_dispatch:
-
-permissions:
-  contents: write
 
 jobs:
   run-watchtower-scan:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Watchtower Repository
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up Python 3.11
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -26,16 +21,23 @@ jobs:
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          pip install pandas numpy requests
+          pip install requests pandas numpy
 
       - name: Execute 6-Hour Multi-Physics & TOC Scan
-        run: python scheduler_agent.py
+        env:
+          WEATHER_API_KEY: ${{ secrets.WEATHER_API_KEY }}
+        run: |
+          python scheduler_agent.py
 
       - name: Archive Generated CAP v1.2 Alerts
         run: |
-          git config user.name "Watchtower Cloud Bot"
-          git config user.email "actions@github.com"
-          git add alerts_archive/
-          git diff --staged --quiet || git commit -m "chore: archive automated CAP v1.2 alerts"
-          git push
+          mkdir -p alerts_archive
+          if [ -n "$(ls -A alerts_archive 2>/dev/null)" ]; then
+            git config user.name "Watchtower Cloud Bot"
+            git config user.email "actions@github.com"
+            git add alerts_archive/
+            git diff --staged --quiet || git commit -m "chore: archive automated CAP v1.2 alerts"
+            git push
+          else
+            echo "No new CAP alerts generated during this scan."
+          fi
