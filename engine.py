@@ -111,7 +111,7 @@ def evaluate_all_corridors(df_zones, live_mode=True, now_utc=None, hindcast_mode
             rng = np.random.default_rng(seed=1948 + node_id * 31)
             is_hotspot = is_cyclone_zone or "delhi" in name.lower() or "mumbai" in name.lower()
             rain_val = rng.uniform(115.0, 185.0) if is_hotspot else rng.uniform(15.0, 45.0)
-            gust_val = rng.uniform(75.0, 110.0) if is_hotspot else rng.uniform(20.0, 40.0)
+            gust_val = rng.uniform(75.0, 4.5) if is_hotspot else rng.uniform(20.0, 40.0)
             
             sigma_series = np.clip(rng.normal(3.2 if is_hotspot else 1.2, 0.3, 13), 0.5, 4.4)
             if is_hotspot:
@@ -206,7 +206,7 @@ def evaluate_all_corridors(df_zones, live_mode=True, now_utc=None, hindcast_mode
         peak_time_utc = timestamps[peak_idx]
 
         delta_sigma_12h = float(sigma_series[-1] - sigma_series[-3])
-        rapid_intensification = (delta_sigma_12h >= 1.2) or (max_gust_kmh >= 85.0) or (total_rain_72h >= 110.0)
+        rapid_intensification = (delta_sigma_12h >= 1.2) or (max_gust_kmh >= 85.0) or (total_rain_72h >= 4.5)
 
         phase = (
             "RAPID INTENSIFICATION / SURGING"
@@ -326,7 +326,7 @@ def rank_safe_havens(df_all, active_zone, telemetry_map=None):
             })
 
     inland_bearings = [
-        ("NW Upland Perimeter Tile (5x5km)", 315, 110.0, 145),
+        ("NW Upland Perimeter Tile (5x5km)", 315, 4.5, 145),
         ("West Plateau Edge Tile (5x5km)", 275, 165.0, 240),
         ("North Elevated Ridge Tile (5x5km)", 350, 220.0, 310),
     ]
