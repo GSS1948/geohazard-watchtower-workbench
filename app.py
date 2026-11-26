@@ -73,7 +73,68 @@ with st.expander("📖 Duty Officer Quick-Start Guide & Methodology Overview", e
         "3. **The $\\tau_2$ Failure Ceiling:** Represents the irreversible regional cascade limit where infrastructure is severely compromised.\n"
         "4. **Tactical Upland Perimeter Tiles:** Rather than forcing impossible 900+ km cross-country evacuations, the system instantly identifies verified local high-ground tiles (**4.5–24.5 km** away) with a 2 to 4-hour transit window and **one-click Google Maps routes**."
     )
+# ==============================================================================
+# TOP-OF-SCREEN PRIORITY ALERT FLASH BANNER (RED & ORANGE / AKIN-TO-RED ZONES)
+# ==============================================================================
+red_zones = triage_df[triage_df["Status"].str.contains("RED", case=False, na=False)]
+orange_zones = triage_df[triage_df["Status"].str.contains("ORANGE", case=False, na=False)]
 
+if not red_zones.empty or not orange_zones.empty:
+    alert_lines = []
+
+    for _, row in red_zones.iterrows():
+        corridor_name = row["Corridor"]
+        c_tel = telemetry_map.get(corridor_name, {})
+        sigma_val = c_tel.get("current_sigma", 0.0)
+        sat_val = c_tel.get("saturation_pct", 0.0)
+        alert_lines.append(
+            f"🔴 <b>CRITICAL RED ALERT — IMMEDIATE ATTENTION REQUIRED:</b> "
+            f"<u>{corridor_name}</u> ({sigma_val:.1f}σ | Saturation: {sat_val:.1f}%)"
+        )
+
+    for _, row in orange_zones.iterrows():
+        corridor_name = row["Corridor"]
+        c_tel = telemetry_map.get(corridor_name, {})
+        sigma_val = c_tel.get("current_sigma", 0.0)
+        sat_val = c_tel.get("saturation_pct", 0.0)
+        alert_lines.append(
+            f"🟠 <b>HIGH ESCALATION WATCH (AKIN TO RED):</b> "
+            f"<u>{corridor_name}</u> ({sigma_val:.1f}σ | Saturation: {sat_val:.1f}%)"
+        )
+
+    banner_html = "<br>".join(alert_lines)
+
+    st.markdown(
+        f"""
+        <style>
+        @keyframes pulse-border {{
+            0% {{ box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.75); }}
+            70% {{ box-shadow: 0 0 0 10px rgba(220, 38, 38, 0); }}
+            100% {{ box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }}
+        }}
+        .watchtower-flash-banner {{
+            background-color: #2b0909;
+            border: 2px solid #ef4444;
+            border-left: 10px solid #dc2626;
+            color: #fef2f2;
+            padding: 14px 18px;
+            border-radius: 6px;
+            margin-top: 10px;
+            margin-bottom: 16px;
+            font-size: 1.02rem;
+            line-height: 1.65;
+            animation: pulse-border 2s infinite;
+        }}
+        </style>
+        <div class="watchtower-flash-banner">
+            🚨 <b>ACTIVE GLOBAL WATCHTOWER PRIORITY DISPATCH ({red_count} RED | {orange_count} ORANGE):</b><br>
+            {banner_html}
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+else:
+    st.success("🟢 ALL 34 GLOBAL SECTORS NOMINAL — No Red or High-Escalation Orange anomalies detected.")
 with st.expander(
     f"🌍 Planetary 34-Node Live Triage Board (Auto-Sorted — Top Active Hot-Spot: {ranked_corridors[0]})",
     expanded=True,
