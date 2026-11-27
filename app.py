@@ -65,6 +65,21 @@ st.markdown(
 )
 
 # Institutional Quick-Start Guide for Reviewers
+# --- DUTY OFFICER PHILOSOPHY & VERIFICATION BANNER ---
+st.markdown(
+    """
+    <div style="background-color: #1e2530; padding: 14px 18px; border-radius: 8px; border-left: 5px solid #10b981; margin-top: 8px; margin-bottom: 18px;">
+        <p style="color: #f3f4f6; font-size: 14px; margin: 0; line-height: 1.55;">
+            🛡️ <b>Operational Discipline &amp; Ground-Truth Verification:</b> 
+            If all nodes are green, <b>we are reporting a realistic and truthful situation on the ground</b>. 
+            By filtering routine background noise through strict statistical gates—and cross-verifying every mathematical anomaly against real-time conditions on the ground before any alert is displayed—this system remains silent and does not raise false alarms during normal conditions. 
+            It breaks silence only when verified critical threats arise, eliminating alert fatigue so duty officers act instantly.
+        </p>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
 with st.expander("📖 Duty Officer Quick-Start Guide & Methodology Overview", expanded=False):
     st.markdown(
         "### How the Geohazard Watchtower Works (2-Minute Briefing)\n"
