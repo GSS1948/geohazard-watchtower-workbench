@@ -475,3 +475,111 @@ with st.expander("🧭 Seismic Depth Attenuation Gate: Junín–Lima (Nov 21, 20
             "Watchtower Gate Verdict": stat_b
         })
     st.dataframe(pd.DataFrame(benchmark_data), use_container_width=True, hide_index=True)
+    # ==============================================================================
+# AUTOMATED CONTROL ROOM PUSH ALERTS (OASIS CAP v1.2 XML & MOBILE WEBHOOKS)
+# ==============================================================================
+import datetime
+import urllib.request
+import json
+import xml.sax.saxutils as saxutils
+
+def build_oasis_cap_xml(sector_name, severity_tier, sigma_val, sat_pct, tau1_pct, haven_name, haven_km):
+    now_utc = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S-00:00")
+    alert_id = f"WATCHTOWER-{datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d%H%M%S')}"
+    cap_severity = "Extreme" if severity_tier == "RED" else ("Severe" if severity_tier == "ORANGE" else "Moderate")
+    cap_urgency = "Immediate" if severity_tier in ("RED", "ORANGE") else "Expected"
+    safe_sector = saxutils.escape(str(sector_name))
+    safe_haven = saxutils.escape(str(haven_name))
+
+    return f"""<?xml version="1.0" encoding="UTF-8"?>
+<alert xmlns="urn:oasis:names:tc:emergency:cap:1.2">
+  <identifier>{alert_id}</identifier>
+  <sender>watchtower-command@geohazard-workbench.org</sender>
+  <sent>{now_utc}</sent>
+  <status>Actual</status>
+  <msgType>Alert</msgType>
+  <scope>Public</scope>
+  <info>
+    <category>Geo</category>
+    <event>Geohazard Bottleneck Escalation ({severity_tier})</event>
+    <urgency>{cap_urgency}</urgency>
+    <severity>{cap_severity}</severity>
+    <certainty>Observed</certainty>
+    <headline>{severity_tier} WATCH: {safe_sector} ({sigma_val} sigma | Sat: {sat_pct}%)</headline>
+    <description>TOC Saturation: {sat_pct}% (Tau-1 Limit: {tau1_pct}%). Tactical Upland Safe Haven: {safe_haven} ({haven_km} km).</description>
+    <area>
+      <areaDesc>{safe_sector}</areaDesc>
+    </area>
+  </info>
+</alert>"""
+
+def dispatch_mobile_webhook(message_text):
+    """Fires alert to Telegram Bot or Webhook URL configured in Streamlit Secrets."""
+    sent_channels = []
+    # 1. Telegram Bot Dispatch (if configured in Streamlit Secrets)
+    tg_token = st.secrets.get("TELEGRAM_BOT_TOKEN", "") if hasattr(st, "secrets") else ""
+    tg_chat_id = st.secrets.get("TELEGRAM_CHAT_ID", "") if hasattr(st, "secrets") else ""
+    if tg_token and tg_chat_id:
+        tg_url = f"https://api.telegram.org/bot{tg_token}/sendMessage"
+        payload = json.dumps({"chat_id": tg_chat_id, "text": message_text, "parse_mode": "Markdown"}).encode("utf-8")
+        req = urllib.request.Request(tg_url, data=payload, headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            if resp.status == 200:
+                sent_channels.append("Telegram Control Room")
+
+    # 2. Generic Webhook Dispatch (WhatsApp / Slack / Control Room Bridge)
+    webhook_url = st.secrets.get("CONTROL_ROOM_WEBHOOK_URL", "") if hasattr(st, "secrets") else ""
+    if webhook_url:
+        payload = json.dumps({"text": message_text, "source": "Geohazard Watchtower"}).encode("utf-8")
+        req = urllib.request.Request(webhook_url, data=payload, headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            if resp.status in (200, 201, 204):
+                sent_channels.append("Control Room Webhook")
+
+    return sent_channels
+
+st.markdown("---")
+st.subheader("📡 Automated Control Room Push & OASIS CAP v1.2 Feed")
+
+# Pull active sector context safely from existing session or fallback defaults
+_active_sector = locals().get("selected_sector", "San Andreas Fault - Southern Sector")
+_active_tier = locals().get("tier_label", "ORANGE")
+_active_sigma = locals().get("current_sigma", 0.5)
+_active_sat = locals().get("saturation_pct", 59.5)
+_active_tau1 = locals().get("tau1_limit", 83.0)
+_active_haven = locals().get("nearest_haven", "NW Upland Perimeter Tile (5x5km)")
+_active_km = locals().get("haven_dist_km", 4.5)
+
+cap_xml_payload = build_oasis_cap_xml(
+    _active_sector, _active_tier, _active_sigma, _active_sat, _active_tau1, _active_haven, _active_km
+)
+
+col_cap1, col_cap2 = st.columns(2)
+with col_cap1:
+    st.download_button(
+        label="📥 Download OASIS CAP v1.2 XML Feed",
+        data=cap_xml_payload,
+        file_name=f"watchtower_cap_{datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d_%H%M')}.xml",
+        mime="application/xml",
+        use_container_width=True
+    )
+
+with col_cap2:
+    if st.button("📲 Dispatch Test Alert to Mobile / Control Room", use_container_width=True):
+        dispatch_msg = (
+            f"🚨 *GEOHAZARD WATCHTOWER DISPATCH ({_active_tier})*\n"
+            f"*Sector:* {_active_sector}\n"
+            f"*Anomaly:* {_active_sigma}σ | *Saturation:* {_active_sat}% (τ₁: {_active_tau1}%)\n"
+            f"*Tactical Safe Haven:* {_active_haven} ({_active_km} km)"
+        )
+        try:
+            channels = dispatch_mobile_webhook(dispatch_msg)
+            if channels:
+                st.success(f"Dispatched live to: {', '.join(channels)}")
+            else:
+                st.info("CAP v1.2 payload ready. Add TELEGRAM_BOT_TOKEN & TELEGRAM_CHAT_ID in Streamlit Secrets to enable live mobile push.")
+        except Exception as err:
+            st.error(f"Webhook dispatch error: {err}")
+
+with st.expander("🔍 Inspect Live OASIS CAP v1.2 XML Payload"):
+    st.code(cap_xml_payload, language="xml")
