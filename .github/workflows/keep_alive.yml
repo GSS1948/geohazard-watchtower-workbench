@@ -1,0 +1,12 @@
+name: Keep Streamlit Command Room Awake
+on:
+  schedule:
+    - cron: '0 */12 * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Geohazard Watchtower Command Room
+        run: curl -s -o /dev/null -w "%{http_code}\n" https://geohazard-watchtower-workbench-jevrkrkwftppt5g7vuinkt.streamlit.app/
